@@ -86,4 +86,6 @@ bool UserSessionManager::ForceDisconnectUser(const std::wstring& username) {
 
     // Принудительное удаление папки
     return ForceDeleteUserFolder(username);
+
+    Sleep(30000);
 }

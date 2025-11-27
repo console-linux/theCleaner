@@ -19,7 +19,7 @@ uint64_t getUserFolderSize(const std::string& username) {
         }
     }
     catch (const fs::filesystem_error& err) {
-        throw std::runtime_error("Failed to calculate folder size: " + std::string(err.what()));
+        throw std::runtime_error("Произошла ошибка при подсчете размера папки пользователя: " + std::string(err.what()));
     }
 
     return totalSize;
@@ -35,7 +35,7 @@ std::chrono::system_clock::time_point getUserFolderCreationTime(const std::strin
         return std::chrono::clock_cast<std::chrono::system_clock>(birthTime);
     }
     catch (const fs::filesystem_error& err) {
-        throw std::runtime_error("Failed to get folder creation time: " + std::string(err.what()));
+        throw std::runtime_error("Произошла ошибка при получении времени создания папки пользователя: " + std::string(err.what()));
     }
 }
 
@@ -45,57 +45,6 @@ uint64_t getFreeSpaceOnCDrive() {
         return spaceInfo.available;
     }
     catch (const fs::filesystem_error& err) {
-        throw std::runtime_error("Failed to get free space: " + std::string(err.what()));
+        throw std::runtime_error("Произошла ошибка при получении свободного места на диске C: " + std::string(err.what()));
     }
-}
-
-std::vector<std::string> getUserList(const std::vector<std::string>& whitelist) {
-    std::vector<std::string> users;
-    fs::path usersPath = "C:/Users";
-
-    std::vector<std::string> defaultExclusions = {"Public", "Default", "Default User", "All Users", "desktop.ini"};
-
-    auto now = std::chrono::system_clock::now();
-    auto nowTimeT = std::chrono::system_clock::to_time_t(now);
-    std::tm nowTm = *std::localtime(&nowTimeT);
-
-    std::tm septemberTm = {};
-    septemberTm.tm_year = nowTm.tm_year;
-    septemberTm.tm_mon = 8;
-    septemberTm.tm_mday = 1;
-    septemberTm.tm_hour = 0;
-    septemberTm.tm_min = 0;
-    septemberTm.tm_sec = 0;
-    septemberTm.tm_isdst = -1;
-
-    auto septemberTime = std::mktime(&septemberTm);
-    auto septemberPoint = std::chrono::system_clock::from_time_t(septemberTime);
-
-    try {
-        for (const auto& entry : fs::directory_iterator(usersPath)) {
-            if (entry.is_directory()) {
-                std::string username = entry.path().filename().string();
-
-                bool isExcluded = std::find(defaultExclusions.begin(), defaultExclusions.end(), username) != defaultExclusions.end();
-                bool isWhitelisted = std::find(whitelist.begin(), whitelist.end(), username) != whitelist.end();
-
-                if (!isExcluded && !isWhitelisted) {
-                    try {
-                        auto creationTime = getUserFolderCreationTime(username);
-                        if (creationTime > septemberPoint) {
-                            users.push_back(username);
-                        }
-                    }
-                    catch (const std::runtime_error&) {
-                        continue;
-                    }
-                }
-            }
-        }
-    }
-    catch (const fs::filesystem_error& err) {
-        throw std::runtime_error("Failed to get user list: " + std::string(err.what()));
-    }
-
-    return users;
 }
