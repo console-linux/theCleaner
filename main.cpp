@@ -11,7 +11,7 @@
 using namespace std;
 
 bool cmp(const pair<string, uint64_t>& a, const pair<string, uint64_t>& b) {
-    return a.second < b.second;
+    return a.second > b.second;
 }
 wstring string_to_wstring(const string& str) {
     wstring_convert<codecvt_utf8<wchar_t>> converter;
