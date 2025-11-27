@@ -7,14 +7,14 @@
 
 namespace fs = std::filesystem;
 
-uint64_t get_user_folder_size(const std::string& username) {
-    fs::path user_path = "C:/Users/" + username;
-    uint64_t total_size = 0;
+uint64_t getUserFolderSize(const std::string& username) {
+    fs::path userPath = "C:/Users/" + username;
+    uint64_t totalSize = 0;
 
     try {
-        for (const auto& entry : fs::recursive_directory_iterator(user_path)) {
+        for (const auto& entry : fs::recursive_directory_iterator(userPath)) {
             if (entry.is_regular_file()) {
-                total_size += entry.file_size();
+                totalSize += entry.file_size();
             }
         }
     }
@@ -22,87 +22,71 @@ uint64_t get_user_folder_size(const std::string& username) {
         throw std::runtime_error("Failed to calculate folder size: " + std::string(err.what()));
     }
 
-    return total_size;
+    return totalSize;
 }
 
-std::chrono::system_clock::time_point get_user_folder_creation_time(const std::string& username) {
-    fs::path user_path = "C:/Users/" + username;
+std::chrono::system_clock::time_point getUserFolderCreationTime(const std::string& username) {
+    fs::path userPath = "C:/Users/" + username;
 
     try {
-        // Use status to get file attributes including birth time
-        auto file_status = fs::status(user_path);
+        auto fileStatus = fs::status(userPath);
+        auto birthTime = fs::last_write_time(userPath);
 
-        // Get the birth time (creation time) - this is available in C++20
-        auto birth_time = fs::last_write_time(user_path); // Fallback to last write time
-
-        // Try to get birth time if supported by the filesystem
-        #ifdef _WIN32
-        // On Windows, we can use the status to try to get creation time
-        // Note: std::filesystem doesn't directly expose birth_time in all implementations
-        // We'll use last_write_time as fallback, but in practice you might need platform-specific code
-        #endif
-
-        return std::chrono::clock_cast<std::chrono::system_clock>(birth_time);
+        return std::chrono::clock_cast<std::chrono::system_clock>(birthTime);
     }
     catch (const fs::filesystem_error& err) {
         throw std::runtime_error("Failed to get folder creation time: " + std::string(err.what()));
     }
 }
 
-uint64_t get_free_space_on_c_drive() {
+uint64_t getFreeSpaceOnCDrive() {
     try {
-        fs::space_info si = fs::space("C:/");
-        return si.available;
+        fs::space_info spaceInfo = fs::space("C:/");
+        return spaceInfo.available;
     }
     catch (const fs::filesystem_error& err) {
         throw std::runtime_error("Failed to get free space: " + std::string(err.what()));
     }
 }
 
-std::vector<std::string> get_user_list(const std::vector<std::string>& whitelist) {
+std::vector<std::string> getUserList(const std::vector<std::string>& whitelist) {
     std::vector<std::string> users;
-    fs::path users_path = "C:/Users";
+    fs::path usersPath = "C:/Users";
 
-    // Default system folders to always exclude
-    std::vector<std::string> default_exclusions = {"Public", "Default", "Default User", "All Users", "desktop.ini"};
+    std::vector<std::string> defaultExclusions = {"Public", "Default", "Default User", "All Users", "desktop.ini"};
 
-    // Get current date and calculate September 1st of current year
     auto now = std::chrono::system_clock::now();
-    auto now_time_t = std::chrono::system_clock::to_time_t(now);
-    std::tm now_tm = *std::localtime(&now_time_t);
+    auto nowTimeT = std::chrono::system_clock::to_time_t(now);
+    std::tm nowTm = *std::localtime(&nowTimeT);
 
-    // Create September 1st of current year
-    std::tm september_tm = {};
-    september_tm.tm_year = now_tm.tm_year; // Current year
-    september_tm.tm_mon = 8; // September (0-based: 0=Jan, 8=Sep)
-    september_tm.tm_mday = 1; // 1st day
-    september_tm.tm_hour = 0;
-    september_tm.tm_min = 0;
-    september_tm.tm_sec = 0;
-    september_tm.tm_isdst = -1; // Let system determine DST
+    std::tm septemberTm = {};
+    septemberTm.tm_year = nowTm.tm_year;
+    septemberTm.tm_mon = 8;
+    septemberTm.tm_mday = 1;
+    septemberTm.tm_hour = 0;
+    septemberTm.tm_min = 0;
+    septemberTm.tm_sec = 0;
+    septemberTm.tm_isdst = -1;
 
-    auto september_time = std::mktime(&september_tm);
-    auto september_point = std::chrono::system_clock::from_time_t(september_time);
+    auto septemberTime = std::mktime(&septemberTm);
+    auto septemberPoint = std::chrono::system_clock::from_time_t(septemberTime);
 
     try {
-        for (const auto& entry : fs::directory_iterator(users_path)) {
+        for (const auto& entry : fs::directory_iterator(usersPath)) {
             if (entry.is_directory()) {
                 std::string username = entry.path().filename().string();
 
-                // Check if this user should be excluded
-                bool is_excluded = std::find(default_exclusions.begin(), default_exclusions.end(), username) != default_exclusions.end();
-                bool is_whitelisted = std::find(whitelist.begin(), whitelist.end(), username) != whitelist.end();
+                bool isExcluded = std::find(defaultExclusions.begin(), defaultExclusions.end(), username) != defaultExclusions.end();
+                bool isWhitelisted = std::find(whitelist.begin(), whitelist.end(), username) != whitelist.end();
 
-                if (!is_excluded && !is_whitelisted) {
+                if (!isExcluded && !isWhitelisted) {
                     try {
-                        // Check creation time - only include if created after September 1st
-                        auto creation_time = get_user_folder_creation_time(username);
-                        if (creation_time > september_point) {
+                        auto creationTime = getUserFolderCreationTime(username);
+                        if (creationTime > septemberPoint) {
                             users.push_back(username);
                         }
                     }
                     catch (const std::runtime_error&) {
-                        // If we can't get creation time, skip this user
                         continue;
                     }
                 }
